@@ -152,7 +152,6 @@ class Scene:
 
   def extractBands(self): # extracting available bands to image specific folder
     tmp = zp.ZipFile("raw\\"+self.fname, 'r')
-    wd = os.getcwd()
     
     for i in self.bands:
       if self.bands[i][0:65] in os.listdir():
