@@ -5,8 +5,10 @@ import re
 import numpy as np
 from datetime import datetime
 
-
+# initialization
 ws = os.getcwd()
+sidiZid = ws+r"\vector_data\sz\sz_limite\limiteSidiZid.shp"
+tbeinya = ws+r"\vector_data\tb\tb_limite\limiteTbeinya.shp"
 
 # utilitary functions to manipulate confusion matrix
 # --functions--
@@ -106,7 +108,8 @@ def gdalBuildFullStack(sceneList, stackName='enter stackname', flist=[]): # buil
 
   fullScene = Scene(stackName)
   for i in flist:
-    day, month, year = dateTransform(i[-28:-20])
+    print(i)
+    day, month, year = dateTransform(i[-27:-19])
     key = year+'_'+month+'_'+day+'_'+i[-12:-8]
     fullScene.toShapeBands[key] = i
   fullScene.sceneName = fullScene.fname[0:-4]
@@ -157,7 +160,9 @@ class Scene:
       if self.bands[i][0:65] in os.listdir():
         pass
       print(i+" : "+self.bands[i])
+      os.chdir(r"./raw_bands")
       tmp.extract(self.bands[i])
+      os.chdir(ws)
     
     tmp = None
     return 0
@@ -171,9 +176,8 @@ class Scene:
       isLegitBand = i != "TCI" and i != "PRB" and i != "SCL" and i != "AOT" and i != "WVP"
       if re.match(pattern10m, self.bands[i]) and isLegitBand:
         print("clipping "+i)
-        self.toShapeBands[i] = "clipped\\" + \
-          self.sceneName+"\\"+self.bands[i][123:-3]+"tif"
-        clipToPolygon10(self.bands[i], self.toShapeBands[i], shape)
+        self.toShapeBands[i] = "clipped\\" + self.sceneName+"\\"+self.bands[i][123:-3]+"tif"
+        clipToPolygon10(r"./raw_bands/"+self.bands[i], self.toShapeBands[i], shape)
 
     for i in self.toShapeBands:
       refBand = self.toShapeBands[i]
@@ -182,17 +186,15 @@ class Scene:
       isLegitBand = i != "TCI" and i != "PRB" and i != "SCL" and i != "AOT" and i != "WVP"
       if not(re.match(pattern10m, self.bands[i])) and isLegitBand:
         print("clipping "+i)
-        self.toShapeBands[i] = "clipped\\" + \
-          self.sceneName+"\\"+self.bands[i][123:-3]+"tif"
-        clipToPolygonNot10(
-          self.bands[i], self.toShapeBands[i], shape, refBand)
+        self.toShapeBands[i] = "clipped\\" + self.sceneName+"\\"+self.bands[i][123:-3]+"tif"
+        clipToPolygonNot10(r"./raw_bands/"+self.bands[i], self.toShapeBands[i], shape, refBand)
 
     
     return 0
 
   def gdalConcat(self):  # concatenating single image bands to monodate layerstack
     inputFolder = "clipped\\"+self.sceneName
-    outputImage = "..\\"+self.sceneName+".tif"
+    outputImage = self.sceneName+".tif"
     ws = os.getcwd()
     os.chdir(inputFolder)
     flist = os.listdir()
@@ -206,8 +208,6 @@ class Scene:
       output.GetRasterBand(i+1).WriteArray(tmpBand.ReadAsArray())
       output.GetRasterBand(i+1).SetNoDataValue(0)
       output.GetRasterBand(i+1).SetDescription(flist[i][-11:-8])
-      if flist[i][-12:-8] == "NDVI" or flist[i][-12:-8] == "REVI" or flist[i][-12:-8] == "SWVI":
-        output.GetRasterBand(i+1).SetDescription(flist[i][-12:-8])
       if flist[i][-11:-8] == "B04":
         output.GetRasterBand(i+1).SetColorInterpretation(3)
       if flist[i][-11:-8] == "B03":
@@ -216,5 +216,46 @@ class Scene:
         output.GetRasterBand(i+1).SetColorInterpretation(5)
     output = None
     os.chdir(ws)
-    self.layerstack = "unzipped\\clipped\\"+self.sceneName+".tif"
+    self.layerstack = "clipped\\"+self.sceneName+".tif"
     return 0
+
+
+# sample code
+
+if __name__ == "__main__":
+    # searching for raw files
+    raw_data = os.listdir(r'./raw')
+    scene_array = []
+    for fname in raw_data:
+        os.chdir(r'./raw')
+        scene_array.append(Scene(fname))
+        os.chdir(ws)
+    for scene in scene_array:
+        print(scene.fname)
+        scene.updateTile()
+        scene.updateBands()
+        scene.extractBands()
+
+        if scene.tile == "T32SPF":
+            scene.clipToShape(sidiZid)
+        if scene.tile == "T32SMF":
+            scene.clipToShape(tbeinya)
+        
+        # scene.gdalConcat()
+
+    # building a layerstack from all bands in the same tile
+
+    T32SMF_tiles = []
+    T32SPF_tiles = []
+
+    for scene in scene_array:
+        print(scene.tile)
+        if scene.tile == "T32SPF":
+            T32SPF_tiles.append(scene)
+        if scene.tile == "T32SMF":
+            T32SMF_tiles.append(scene)
+    if T32SPF_tiles != []:
+        T32SPF_fullstack = gdalBuildFullStack(T32SPF_tiles, "T32SPF_fullstack")
+    if T32SMF_tiles != []:
+        T32SMF_fullstack = gdalBuildFullStack(T32SMF_tiles, "T32SMF_fullstack")
+            
