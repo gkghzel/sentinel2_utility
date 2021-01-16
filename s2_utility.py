@@ -227,6 +227,8 @@ if __name__ == "__main__":
     raw_data = os.listdir(r'./raw')
     scene_array = []
     for fname in raw_data:
+        if fname =="_":
+            pass
         os.chdir(r'./raw')
         scene_array.append(Scene(fname))
         os.chdir(ws)
@@ -241,7 +243,7 @@ if __name__ == "__main__":
         if scene.tile == "T32SMF":
             scene.clipToShape(tbeinya)
         
-        # scene.gdalConcat()
+        scene.gdalConcat()
 
     # building a layerstack from all bands in the same tile
 
@@ -255,7 +257,7 @@ if __name__ == "__main__":
         if scene.tile == "T32SMF":
             T32SMF_tiles.append(scene)
     if T32SPF_tiles != []:
-        T32SPF_fullstack = gdalBuildFullStack(T32SPF_tiles, "T32SPF_fullstack")
+        T32SPF_fullstack = gdalBuildFullStack(T32SPF_tiles, "T32SPF_fullstack.tif")
     if T32SMF_tiles != []:
-        T32SMF_fullstack = gdalBuildFullStack(T32SMF_tiles, "T32SMF_fullstack")
+        T32SMF_fullstack = gdalBuildFullStack(T32SMF_tiles, "T32SMF_fullstack.tif")
             
